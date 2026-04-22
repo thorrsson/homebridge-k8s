@@ -1,14 +1,14 @@
+{{- if .Values.config.configFile.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: homebridge-config
+  name: {{ .Chart.Name }}-config
+  labels:
+    app: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 data:
   config.json: |-
-  {{- $configFile := printf .Values.config.configFile.path }}
-  {{ (.Files.Get $configFile) | nindent 4 }}
-
-
-
-  package.json: |-
-  {{- $packageFile := printf .Values.config.packageFile.path }}
-  {{ (.Files.Get $packageFile) | nindent 4 }}
+    {{- $configFile := printf .Values.config.configFile.path }}
+    {{ (.Files.Get $configFile) | nindent 4 }}
+{{- end }}

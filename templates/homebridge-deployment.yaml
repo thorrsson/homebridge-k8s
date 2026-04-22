@@ -4,24 +4,29 @@ metadata:
   name: {{ .Chart.Name }}-deployment
   labels:
     app: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 
 spec:
-  
+
   replicas: {{ .Values.replicaCount }}
-  
+
   selector:
     matchLabels:
       app: {{ .Chart.Name }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-  
+
   template:
     metadata:
       annotations:
         # invokes a redeployment if configuration changes
+        {{- if .Values.config.configFile.enabled }}
         {{- $configFile := printf .Values.config.configFile.path }}
-        {{- $packageFile := printf .Values.config.packageFile.path }}
         config-sha: {{ sha256sum (.Files.Get $configFile) }}
-        package-sha: {{ sha256sum (.Files.Get $packageFile) }}
+        {{- end }}
 
       labels:
         app: {{ .Chart.Name }}
@@ -31,29 +36,24 @@ spec:
 
       volumes:
 
+        {{- if .Values.config.configFile.enabled }}
         - name: config
           configMap:
-            name: homebridge-config
+            name: {{ .Chart.Name }}-config
+        {{- end }}
 
-        - name: homebridge-persist
+        - name: homebridge-data
           persistentVolumeClaim:
             claimName: {{ .Chart.Name }}-pvclaim
 
-        - name: homebridge-accessories
-          persistentVolumeClaim:
-            claimName: {{ .Chart.Name }}-accessories
-
       containers:
-        - name: {{ .Chart.Name }}-deployment
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.image.digest }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
           volumeMounts:
-            - name: homebridge-persist
-              mountPath: /homebridge/persist
-
-            - name: homebridge-accessories
-              mountPath: /homebridge/accessories
+            - name: homebridge-data
+              mountPath: /homebridge
 
             {{- if .Values.config.configFile.enabled }}
             - name: config
@@ -61,26 +61,14 @@ spec:
               subPath: config.json
             {{- end }}
 
-            - name: config
-              mountPath: /homebridge/package.json
-              subPath: package.json
-
           securityContext:
             privileged: true
 
           env:
-            - name: PGID
-              value: "{{ .Values.environment.pgid }}"
-            - name: PUID
-              value: "{{ .Values.environment.puid }}"
-            - name: HOMEBRIDGE_CONFIG_UI
-              value: "{{ .Values.environment.ui.enabled }}"
-            - name: HOMEBRIDGE_CONFIG_UI_PORT
-              value: "{{ .Values.environment.ui.port }}"
             - name: TZ
               value: "{{ .Values.environment.timezone }}"
-            - name: PACKAGES
-              value: "{{ .Values.environment.packages }}"
+            - name: ENABLE_AVAHI
+              value: "{{ .Values.environment.enableAvahi }}"
 
           ports:
             - name: {{ .Values.ports.ui.name }}
@@ -90,6 +78,18 @@ spec:
             - name: {{ .Values.ports.service.name }}
               containerPort: {{ .Values.ports.service.number }}
               protocol: {{ .Values.ports.service.protocol }}
+
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.ports.ui.name }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.ports.ui.name }}
+            initialDelaySeconds: 120
+            periodSeconds: 30
 
       hostNetwork: true
 
@@ -102,7 +102,7 @@ spec:
                 matchExpressions:
                   - key: "{{ .Values.affinity.label }}"
                     operator: In
-                    values: 
+                    values:
                       {{- range .Values.affinity.value }}
                       - {{ . | quote }}
                       {{- end }}
