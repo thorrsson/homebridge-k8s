@@ -24,7 +24,7 @@ spec:
       annotations:
         # invokes a redeployment if configuration changes
         {{- if .Values.config.configFile.enabled }}
-        {{- $configFile := printf .Values.config.configFile.path }}
+        {{- $configFile := .Values.config.configFile.path }}
         config-sha: {{ sha256sum (.Files.Get $configFile) }}
         {{- end }}
 

@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 data:
   config.json: |-
-    {{- $configFile := printf .Values.config.configFile.path }}
+    {{- $configFile := .Values.config.configFile.path }}
     {{ (.Files.Get $configFile) | nindent 4 }}
 {{- end }}
