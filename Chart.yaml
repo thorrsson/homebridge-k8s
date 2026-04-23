@@ -1,5 +1,15 @@
-apiVersion: v1
-appVersion: "1.0"
+apiVersion: v2
+appVersion: "2026-04-20"
 description: Homebridge on Kubernetes
 name: homebridge
-version: 1.0.0
+type: application
+version: 2.0.0
+kubeVersion: ">=1.19.0-0"
+home: https://github.com/thorrsson/homebridge-k8s
+sources:
+  - https://github.com/thorrsson/homebridge-k8s
+  - https://github.com/homebridge/docker-homebridge
+keywords:
+  - homebridge
+  - homekit
+  - smarthome

@@ -1,27 +1,27 @@
 replicaCount: 1
 
-image: 
-  digest: oznu/homebridge@sha256:ecf944ab0edc9fced9495ab9f9c52aff5bd86ab02c74dab883dc9a82d79a3eb9
+image:
+  # Official Homebridge image (multi-arch: amd64, arm/v7, arm64).
+  # Pinned to the `latest` manifest digest for reproducibility; override with
+  # `--set image.digest=homebridge/homebridge:latest` for floating tags.
+  digest: homebridge/homebridge@sha256:79c95b078973b187d8985385f012b477320c57dc49911f70746eb72ea8d39eed
   pullPolicy: IfNotPresent
 
 environment:
-  pgid: 0
-  puid: 0
-  ui:
-    enabled: 1
-    port: 80
   timezone: America/Los_Angeles
-  packages: ffmpeg
+  # Set to 0 to disable the bundled Avahi mDNS daemon (useful when relying on
+  # the host's mDNS stack via hostNetwork).
+  enableAvahi: 1
 
 ports:
 
   ui:
     name: ui-http
-    number: 80
+    number: 8581
     protocol: TCP
 
   service:
-    name: service-mdns
+    name: service-hap
     number: 51826
     protocol: TCP
 
@@ -30,12 +30,17 @@ service:
 
 affinity:
   weight: 100
-  label: 
+  label:
   value:
+
+persistence:
+  # Size of the /homebridge PVC that stores config, persist and plugin data.
+  size: 1Gi
 
 config:
   configFile:
+    # When enabled, the file at `path` is rendered into a ConfigMap and mounted
+    # at /homebridge/config.json. Disable if you prefer managing config through
+    # the Homebridge UI after the initial bring-up.
     enabled: true
     path: config/config.json
-  packageFile:
-    path: config/package.json
